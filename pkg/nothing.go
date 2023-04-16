@@ -26,10 +26,7 @@ package scalar
 
 import (
 	"context"
-	"errors"
 )
-
-var ErrNoValue = errors.New("no value")
 
 // Nothing is a scalar that never has a value.
 type Nothing[T any] struct {
@@ -42,6 +39,9 @@ func NewNothing[T any](reason error) Nothing[T] {
 }
 
 func (n Nothing[T]) Value(context.Context) (_ T, err error) {
-	err = errors.Join(ErrNoValue, n.reason)
+	if n.reason == nil {
+		panic("no reason")
+	}
+	err = n.reason
 	return
 }
