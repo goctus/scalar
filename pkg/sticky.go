@@ -34,24 +34,31 @@ type Sticky[T any] struct {
 	origin Scalar[T]
 
 	m     *sync.Mutex
-	cache Scalar[T]
+	cache *[1]Scalar[T]
 }
 
 // NewSticky creates a new Sticky.
 func NewSticky[T any](origin Scalar[T]) Sticky[T] {
-	return Sticky[T]{origin, &sync.Mutex{}, nil}
+	return Sticky[T]{
+		origin: origin,
+		m:      new(sync.Mutex),
+		cache:  new([1]Scalar[T]),
+	}
 }
 
 func (s Sticky[T]) Value(ctx context.Context) (T, error) {
-	if s.cache == nil {
-		s.m.Lock()
-		defer s.m.Unlock()
+	s.m.Lock()
+	defer s.m.Unlock()
+	if s.cache[0] == nil {
 		origin, err := s.origin.Value(ctx)
-		if err == nil {
-			s.cache = NewConstant(origin)
-		} else {
-			s.cache = NewNothing[T](err)
+		if err != nil {
+			return NewNothing[T](err).Value(ctx)
 		}
+		s.cache[0] = NewConstant(origin)
 	}
-	return s.cache.Value(ctx)
+	return s.cache[0].Value(ctx)
+}
+
+func (s Sticky[T]) Clone() Sticky[T] {
+	return s
 }
